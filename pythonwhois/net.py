@@ -2,7 +2,7 @@ import socket, re, sys
 from codecs import encode, decode
 from . import shared
 
-def get_whois_raw(domain, server="", previous=None, rfc3490=True, never_cut=False, with_server_list=False, server_list=None):
+def get_whois_raw(domain, server="", previous=None, rfc3490=True, never_cut=False, with_server_list=False, server_list=None, timeout=None):
 	previous = previous or []
 	server_list = server_list or []
 	# Sometimes IANA simply won't give us the right root WHOIS server
@@ -43,7 +43,7 @@ def get_whois_raw(domain, server="", previous=None, rfc3490=True, never_cut=Fals
 				target_server = exc_serv
 				break
 		if is_exception == False:
-			target_server = get_root_server(domain)
+			target_server = get_root_server(domain, timeout=timeout)
 	else:
 		target_server = server
 	if target_server == "whois.jprs.jp":
@@ -54,7 +54,7 @@ def get_whois_raw(domain, server="", previous=None, rfc3490=True, never_cut=Fals
 		request_domain = "=%s" % domain # Avoid partial matches
 	else:
 		request_domain = domain
-	response = whois_request(request_domain, target_server)
+	response = whois_request(request_domain, target_server, timeout=timeout)
 	if never_cut:
 		# If the caller has requested to 'never cut' responses, he will get the original response from the server (this is
 		# useful for callers that are only interested in the raw data). Otherwise, if the target is verisign-grs, we will
@@ -89,7 +89,7 @@ def get_whois_raw(domain, server="", previous=None, rfc3490=True, never_cut=Fals
 	else:
 		return new_list
 
-def get_root_server(domain):
+def get_root_server(domain, timeout=None):
 	data = whois_request(domain, "whois.iana.org")
 	for line in [x.strip() for x in data.splitlines()]:
 		match = re.match("refer:\s*([^\s]+)", line)
@@ -98,9 +98,10 @@ def get_root_server(domain):
 		return match.group(1)
 	raise shared.WhoisException("No root WHOIS server found for domain.")
 
-def whois_request(domain, server, port=43):
+def whois_request(domain, server, port=43, timeout=None):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	sock.connect((server, port))
+	sock.settimeout(timeout)
 	sock.send(("%s\r\n" % domain).encode("utf-8"))
 	buff = b""
 	while True:

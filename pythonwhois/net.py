@@ -90,7 +90,7 @@ def get_whois_raw(domain, server="", previous=None, rfc3490=True, never_cut=Fals
 		return new_list
 
 def get_root_server(domain, timeout=None):
-	data = whois_request(domain, "whois.iana.org", timeout)
+	data = whois_request(domain, "whois.iana.org", timeout=timeout)
 	for line in [x.strip() for x in data.splitlines()]:
 		match = re.match("refer:\s*([^\s]+)", line)
 		if match is None:
